@@ -33,22 +33,23 @@ class ZeptoMailTransport implements TransportInterface
 
     public function send(RawMessage $message, Envelope $envelope = null): ?SentMessage
     {
-        try{
+        try {
             $urlToSend = $this->getEndpoint();
             $email = MessageConverter::toEmail($message);
-            $data = $this->getPayload($email,$envelope);
+            $data = $this->getPayload($email, $envelope);
             $data["from"] = $this->getFrom($message);
-            $response = $this->client->post($urlToSend,[ 'headers' => [
-                'Authorization' =>  $this->apikey,
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-                'user-agent' => 'Laravel'
-            ],
-            'json' => $data]);
+            $response = $this->client->post($urlToSend, [
+                'headers' => [
+                    'Authorization' =>  $this->apikey,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'user-agent' => 'Laravel'
+                ],
+                'json' => $data
+            ]);
         } catch (ConnectException $e) {
             Log::error('Connection error: ' . $e->getMessage());
             throw new \RuntimeException('Failed to connect to mail server.', 0, $e);
-
         } catch (RequestException $e) {
             if ($e->hasResponse()) {
                 $statusCode = $e->getResponse()->getStatusCode();
@@ -59,13 +60,12 @@ class ZeptoMailTransport implements TransportInterface
                 Log::error('Request error: ' . $e->getMessage());
                 throw new \RuntimeException('Mail request failed.', 0, $e);
             }
-
         } catch (\Throwable $e) {
             Log::error('Unexpected error: ' . $e->getMessage());
             throw new \RuntimeException('An unexpected error occurred while sending mail.', 0, $e);
         }
-        
-        
+
+
         return new SentMessage($message, $envelope);
     }
 
@@ -73,7 +73,7 @@ class ZeptoMailTransport implements TransportInterface
     {
         // No plugins needed
     }
-    
+
     public function __toString(): string
     {
         return 'zeptomail';
@@ -94,9 +94,9 @@ class ZeptoMailTransport implements TransportInterface
     private function getEndpoint(): ?string
     {
 
-        return "https://zeptomail.".$this->domainMapping[$this->host].'/v1.1/email';
+        return "https://zeptomail." . $this->domainMapping[$this->host] . '/v1.1/email';
     }
-        /**
+    /**
      * @param Email $email
      * @param Envelope $envelope
      * @return array
@@ -104,48 +104,45 @@ class ZeptoMailTransport implements TransportInterface
     private function getPayload(Email $email, Envelope $envelope): array
     {
         $recipients = $this->getRecipients($email, $envelope);
-        $toaddress = $this->getEmailDetailsByType($recipients,'to');
-        $ccaddress = $this->getEmailDetailsByType($recipients,'cc');
-        $bccaddress = $this->getEmailDetailsByType($recipients,'bcc');
+        $toaddress = $this->getEmailDetailsByType($recipients, 'to');
+        $ccaddress = $this->getEmailDetailsByType($recipients, 'cc');
+        $bccaddress = $this->getEmailDetailsByType($recipients, 'bcc');
         $attachmentJSONArr = array();
         $payload = [
-            
+
             'subject' => $email->getSubject()
         ];
-        if($email->getHtmlBody() != null) {
+        if ($email->getHtmlBody() != null) {
             $payload['htmlbody'] = $email->getHtmlBody();
-        }
-        else {
+        } else {
             $payload['htmlbody'] = $email->getTextBody();
         }
-       
-        
-        if(isset($toaddress) && !empty($toaddress)) {
-            $payload['to'] =$toaddress;
+
+
+        if (isset($toaddress) && !empty($toaddress)) {
+            $payload['to'] = $toaddress;
         }
-        if(isset($ccaddress) && !empty($ccaddress)) {
-            $payload['cc'] =$ccaddress;
+        if (isset($ccaddress) && !empty($ccaddress)) {
+            $payload['cc'] = $ccaddress;
         }
-        if(isset($bccaddress) && !empty($bccaddress)) {
-            $payload['bcc'] =$bccaddress;
+        if (isset($bccaddress) && !empty($bccaddress)) {
+            $payload['bcc'] = $bccaddress;
         }
 
-$replyToHeader = $email->getHeaders()->get('Reply-To');
-if ($replyToHeader) {
-    $replyToAddresses = $replyToHeader->getAddresses();
-    if (!empty($replyToAddresses)) {
-        $firstReplyTo = $replyToAddresses[0];
-        $payload['reply_to'] = [[
-            'email_address' => [
-                'address' => $firstReplyTo->getAddress(),
-                'name' => $firstReplyTo->getName() ?? '',
-            ]
-        ]];
-    }
-}
-		
+        $replyToHeader = $email->getHeaders()->get('Reply-To');
+        if ($replyToHeader) {
+            $replyToAddresses = $replyToHeader->getAddresses();
+            if (!empty($replyToAddresses)) {
+                $firstReplyTo = $replyToAddresses[0];
+                $payload['reply_to'] = [
+                    'address' => $firstReplyTo->getAddress(),
+                    'name' => $firstReplyTo->getName() ?? '',
+                ];
+            }
+        }
+
         foreach ($email->getAttachments() as $attachment) {
-            
+
             $headers = $attachment->getPreparedHeaders();
             $disposition = $headers->getHeaderBody('Content-Disposition');
             $filename = $headers->getHeaderParameter('Content-Disposition', 'filename');
@@ -154,7 +151,7 @@ if ($replyToHeader) {
                 'content' => base64_encode($attachment->getBody()),
                 'name' => $filename,
                 'mime_type' => $headers->get('Content-Type')->getBody()
-              ];
+            ];
 
             if ($name = $headers->getHeaderParameter('Content-Disposition', 'name')) {
                 $att['name'] = $name;
@@ -162,14 +159,15 @@ if ($replyToHeader) {
 
             $attachmentJSONArr[] = $att;
         }
-        if(isset($attachmentJSONArr)) {
+
+        if (isset($attachmentJSONArr) && !empty($attachmentJSONArr)) {
             $payload['attachments'] = $attachmentJSONArr;
         }
-        
+
 
         return $payload;
     }
-      /**
+    /**
      * @param Email $email
      * @param Envelope $envelope
      * @return array
@@ -201,35 +199,32 @@ if ($replyToHeader) {
 
         return $recipients;
     }
-    protected function getEmailDetailsByType(array $recipients,string $type): array
+    protected function getEmailDetailsByType(array $recipients, string $type): array
     {
         $sendmailaddress = [];
         foreach ($recipients as $recipient) {
-            if($type === $recipient['type']){
+            if ($type === $recipient['type']) {
                 $emailDetail = [
                     'address' => $recipient['email']
-                    ];
-                if(isset($recipient['name'])) {
+                ];
+                if (isset($recipient['name'])) {
                     $emailDetail['name'] = $recipient['name'];
                 }
-                $emailDetails = ['email_address' =>$emailDetail];
+                $emailDetails = ['email_address' => $emailDetail];
                 $sendmailaddress[] = $emailDetails;
             }
-           
         }
         return $sendmailaddress;
     }
 
     public $domainMapping = [
-		"zoho.com"          => "zoho.com",
-		"zoho.eu"           => "zoho.eu", 
-		"zoho.in"           => "zoho.in", 
-		"zoho.com.cn"       => "zoho.com.cn",
-		"zoho.com.au"       => "zoho.com.au",
-		"zoho.jp"           => "zoho.jp",
-		"zohocloud.ca"      => "zohocloud.ca",
-		"zoho.sa"           => "zoho.sa"
+        "zoho.com"          => "zoho.com",
+        "zoho.eu"           => "zoho.eu",
+        "zoho.in"           => "zoho.in",
+        "zoho.com.cn"       => "zoho.com.cn",
+        "zoho.com.au"       => "zoho.com.au",
+        "zoho.jp"           => "zoho.jp",
+        "zohocloud.ca"      => "zohocloud.ca",
+        "zoho.sa"           => "zoho.sa"
     ];
-
-
 }
