@@ -130,7 +130,18 @@ class ZeptoMailTransport implements TransportInterface
             $payload['bcc'] =$bccaddress;
         }
 
-        
+        $replyTo = $email->getReplyTo();
+if (!empty($replyTo)) {
+    $replyToAddress = reset($replyTo);
+    $payload['reply_to'] = [
+        [
+            'email_address' => [
+                'address' => $replyToAddress->getAddress(),
+                'name' => $replyToAddress->getName() ?? '',
+            ]
+        ]
+    ];
+}
 
         foreach ($email->getAttachments() as $attachment) {
             
